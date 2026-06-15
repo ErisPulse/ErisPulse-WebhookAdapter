@@ -1,0 +1,18 @@
+[project]
+name = "ErisPulse-WebhookAdapter"
+version = "4.0.0"
+description = "ErisPulse的Webhook通用桥接适配模块"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [ { name = "ErisPulse" } ]
+dependencies = []
+
+[project.urls]
+"homepage" = "https://github.com/ErisPulse/ErisPulse-WebhookAdapter"
+
+[project.entry-points."erispulse.adapter"]
+webhook = "WebhookAdapter:WebhookAdapter"
+
+[tool.setuptools.packages.find]
+include = [ "WebhookAdapter" ]
