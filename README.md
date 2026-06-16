@@ -16,14 +16,14 @@ ErisPulse 的 **Webhook 通用桥接适配器**（低代码万能桥）。它是
 ## 安装
 
 ```bash
-pip install ErisPulse-WebhookAdapter
-```
+epsdk install
 
-安装后，ErisPulse 会通过 entry-point 自动发现并加载 `webhook` 适配器。
+# 选择 `适配器` 安装 `Webhook` 适配器
+```
 
 ## 配置
 
-配置位于 `config.toml` 的 `[WebhookAdapter]` 段，采用多账户结构：
+配置位于 `config.toml` 的 `[WebhookAdapter]` 段，或通过Dashboard的`适配器配置进行配置`：
 
 ```toml
 [WebhookAdapter.accounts.default]
