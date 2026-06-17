@@ -19,7 +19,7 @@ class WebhookAccountConfig(BotAccountConfig):
     bot_id: str = field(
         default="webhook_bot",
         metadata={
-            "description": "该桥接代表的机器人身份ID",
+            "description": "Bot identity ID represented by this bridge",
             "required": False,
             "webui": {"widget": "text", "group": "basic", "order": 1},
         },
@@ -27,7 +27,7 @@ class WebhookAccountConfig(BotAccountConfig):
     callback_path: str = field(
         default="/webhook/{account}",
         metadata={
-            "description": "入站回调路径（支持 {account} 占位符）",
+            "description": "Inbound callback path (supports {account} placeholder)",
             "required": False,
             "webui": {"widget": "text", "group": "connection", "order": 2},
         },
@@ -35,7 +35,7 @@ class WebhookAccountConfig(BotAccountConfig):
     outgoing_url: str = field(
         default="",
         metadata={
-            "description": "出站目标 URL（订阅到其他系统，模块发送消息时 POST 到此地址）",
+            "description": "Outbound target URL (when a module sends a message, it is POSTed to this address)",
             "required": False,
             "webui": {"widget": "text", "group": "connection", "order": 3},
         },
@@ -43,7 +43,7 @@ class WebhookAccountConfig(BotAccountConfig):
     secret: str = field(
         default="",
         metadata={
-            "description": "鉴权密钥（留空则不校验）",
+            "description": "Auth secret (leave empty to disable verification)",
             "required": False,
             "secret": True,
             "webui": {"widget": "password", "group": "basic", "order": 4},
@@ -52,7 +52,7 @@ class WebhookAccountConfig(BotAccountConfig):
     detail_type: str = field(
         default="private",
         metadata={
-            "description": "默认会话类型（body 未指定 detail_type 时使用）",
+            "description": "Default session type (used when detail_type is not specified in the body)",
             "required": False,
             "webui": {"widget": "text", "group": "basic", "order": 5},
         },
