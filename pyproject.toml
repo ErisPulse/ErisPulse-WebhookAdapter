@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "ErisPulse-WebhookAdapter"
 version = "4.2.0"
 description = "ErisPulse的Webhook通用桥接适配模块"
