@@ -1,1 +1,1 @@
-from .Core import WebhookAdapter
+from .Core import WebhookAdapter, __version__

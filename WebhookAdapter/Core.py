@@ -6,9 +6,15 @@ from typing import Any, Dict, List
 from ErisPulse.Core import client, router
 from ErisPulse.Core.Bases.adapter import BaseAdapter
 from ErisPulse.Core.config import config as config_mgr
+from ErisPulse.Core.Bases import BotAccountConfig
+from ErisPulse.Core.Bases.config_schema import dict_to_dataclass
 from ErisPulse.Core.Event import register_event_mixin, unregister_platform_event_methods
-from ErisPulse.runtime.config_schema import BotAccountConfig, dict_to_dataclass
 from ErisPulse.Core.i18n import i18n
+
+__version__ = "4.2.0"
+
+# 软依赖的框架最低版本（运行时检测，仅提示不强制）
+MIN_FRAMEWORK_VERSION = (2, 7, 1)
 
 from .Converter import WebhookConverter
 
@@ -133,6 +139,72 @@ class WebhookAdapter(BaseAdapter):
         self._running = False
         self._registered_routes: List[str] = []
         self._register_i18n()
+        self._check_framework_version()
+        self._get_logger().info(f"WebhookAdapter v{__version__} 已加载")
+
+    @staticmethod
+    def _parse_version(version_str: str) -> tuple:
+        """解析版本号为可比较的三元组（忽略 dev/预发布后缀，如 2.8.0-dev.3 → (2, 8, 0)）"""
+        parts = []
+        for piece in str(version_str).split("."):
+            digits = "".join(ch for ch in piece if ch.isdigit())
+            parts.append(int(digits) if digits else 0)
+        while len(parts) < 3:
+            parts.append(0)
+        return tuple(parts[:3])
+
+    def _check_framework_version(self):
+        """软依赖检测：框架版本过低时打警告（不阻断加载）"""
+        try:
+            from importlib.metadata import version as _pkg_version
+
+            raw = _pkg_version("ErisPulse")
+        except Exception:
+            return
+        try:
+            if self._parse_version(raw) < MIN_FRAMEWORK_VERSION:
+                self._get_logger().warning(
+                    f"当前 ErisPulse 版本 {raw} 过低：WebhookAdapter v{__version__} 需要 >= "
+                    f"{'.'.join(map(str, MIN_FRAMEWORK_VERSION))}，"
+                    "部分功能可能不可用，建议升级框架"
+                )
+        except Exception:
+            pass
+
+    # ==================== Api DSL（最小集） ====================
+
+    class Api(BaseAdapter.Api):
+        """Webhook 桥接标准 API 动作实现（最小集）"""
+
+        async def get_self_info(self) -> dict:
+            account_name, account = self._adapter._resolve_account(self._account_id)
+            return self._adapter.make_response(
+                data={
+                    "user_id": str(getattr(account, "bot_id", "") or account_name),
+                    "user_name": f"webhook:{account_name}",
+                }
+            )
+
+        async def get_status(self) -> dict:
+            ad = self._adapter
+            bots = []
+            for name in ad.accounts:
+                bots.append({
+                    "self": {"platform": ad.platform, "user_id": name, "account_id": name},
+                    "online": ad._running and name in ad._registered_routes,
+                })
+            return ad.make_response(data={"good": any(b["online"] for b in bots), "bots": bots})
+
+        async def get_version(self) -> dict:
+            from . import __version__
+
+            return self._adapter.make_response(
+                data={"impl": "ErisPulse-WebhookAdapter", "version": __version__, "onebot_version": "12"}
+            )
+
+        async def get_supported_actions(self) -> dict:
+            actions = {"get_self_info", "get_status", "get_version", "get_supported_actions"}
+            return self._adapter.make_response(data=sorted(actions))
 
     def _register_i18n(self):
         """注册配置字段与日志消息的 i18n 翻译"""
