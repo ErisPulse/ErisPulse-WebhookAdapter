@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
@@ -11,7 +12,7 @@ from ErisPulse.Core.Bases.config_schema import dict_to_dataclass
 from ErisPulse.Core.Event import register_event_mixin, unregister_platform_event_methods
 from ErisPulse.Core.i18n import i18n
 
-__version__ = "4.3.0"
+__version__ = "4.3.1"
 
 # 软依赖的框架最低版本（运行时检测，仅提示不强制）
 MIN_FRAMEWORK_VERSION = (2, 7, 1)
@@ -43,6 +44,17 @@ def _forward_nodes_plain(nodes, separator: str = "\n") -> str:
         elif text:
             lines.append(text)
     return separator.join(lines)
+
+
+def _encode_payload_bytes(value):
+    """payload 中 bytes/bytearray 值编码为 base64 字符串（二进制以 base64 传输）"""
+    if isinstance(value, (bytes, bytearray)):
+        return base64.b64encode(bytes(value)).decode("ascii")
+    if isinstance(value, list):
+        return [_encode_payload_bytes(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _encode_payload_bytes(item) for key, item in value.items()}
+    return value
 
 
 @dataclass
@@ -491,7 +503,8 @@ class WebhookAdapter(BaseAdapter):
                 "target_type": target_type,
                 "target_id": target_id,
                 "account": account_name,
-                "message": message,
+                # message 内 bytes 值以 base64 字符串传输
+                "message": _encode_payload_bytes(message),
                 "timestamp": int(time.time()),
             }
 
@@ -523,7 +536,7 @@ class WebhookAdapter(BaseAdapter):
             except Exception as e:
                 self.logger.error(i18n.t("webhook.outbound_failed", name=account_name, error=e, default="Webhook出站请求失败({name}): {error}"))
                 return self.make_error(
-                    retcode=33001,
+                    retcode=10002,
                     message=i18n.t("webhook.outbound_failed_msg", error=str(e), default="出站请求失败: {error}"),
                     raw=None,
                 )
