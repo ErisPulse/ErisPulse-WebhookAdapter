@@ -2,8 +2,20 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional
 
+from ErisPulse.Core.Bases import BaseConverter
 
-class WebhookConverter:
+
+def _prefix_json_segments(message: List[dict]) -> List[dict]:
+    """未加平台前缀的 json 段统一为 webhook_json（遵循平台扩展段命名规则）"""
+    return [
+        {"type": "webhook_json", "data": seg.get("data", {})}
+        if isinstance(seg, dict) and seg.get("type") == "json"
+        else seg
+        for seg in message
+    ]
+
+
+class WebhookConverter(BaseConverter):
     """
     Webhook 事件转换器
 
@@ -17,6 +29,7 @@ class WebhookConverter:
     """
 
     def __init__(self, bot_id: str = "webhook_bot"):
+        super().__init__("webhook")
         self.bot_id = bot_id
 
     def convert(
@@ -42,10 +55,13 @@ class WebhookConverter:
         message: List[dict] = raw_body.get("message", [])
         if not isinstance(message, list):
             message = []
+        message = _prefix_json_segments(message)
 
         event: Dict[str, Any] = {
             "id": str(uuid.uuid4().int)[:16],
             "time": int(time.time()),
+            # 缺失时生成 uuid，避免下游按 message_id 去重/回复时拿到空值
+            "message_id": str(raw_body.get("message_id") or uuid.uuid4()),
             "type": "message",
             "detail_type": detail_type,
             "platform": "webhook",
@@ -67,9 +83,8 @@ class WebhookConverter:
         if group_id:
             event["group_id"] = str(group_id)
 
-        # alt_message：若 body 显式提供则透传
+        # alt_message：显式提供则透传，缺失时空串兜底
         alt_message = raw_body.get("alt_message")
-        if alt_message:
-            event["alt_message"] = str(alt_message)
+        event["alt_message"] = str(alt_message) if alt_message else ""
 
         return event

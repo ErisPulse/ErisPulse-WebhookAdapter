@@ -12,7 +12,7 @@ from ErisPulse.Core.Bases.config_schema import dict_to_dataclass
 from ErisPulse.Core.Event import register_event_mixin, unregister_platform_event_methods
 from ErisPulse.Core.i18n import i18n
 
-__version__ = "4.3.1"
+__version__ = "4.3.2"
 
 # 软依赖的框架最低版本（运行时检测，仅提示不强制）
 MIN_FRAMEWORK_VERSION = (2, 7, 1)
@@ -178,9 +178,9 @@ class WebhookAdapter(BaseAdapter):
 
         def Json(self, data):
             """
-            原始 JSON 透传：将任意 JSON 数据作为消息段发送
+            原始 JSON 透传：将任意 JSON 数据作为 webhook_json 消息段发送
             """
-            return self.Raw_ob12([{"type": "json", "data": {"raw": data}}])
+            return self.Raw_ob12([{"type": "webhook_json", "data": {"raw": data}}])
 
     def __init__(self, sdk_ref=None):
         super().__init__(sdk_ref)
@@ -231,6 +231,7 @@ class WebhookAdapter(BaseAdapter):
                 data={
                     "user_id": str(getattr(account, "bot_id", "") or account_name),
                     "user_name": f"webhook:{account_name}",
+                    "user_displayname": f"webhook:{account_name}",
                 }
             )
 
@@ -461,6 +462,8 @@ class WebhookAdapter(BaseAdapter):
                 try:
                     from ErisPulse.Core import adapter as adapter_mgr
 
+                    # 注入内部账户名到事件 self，供多账户路由使用
+                    event.setdefault("self", {})["account_id"] = account_name
                     await adapter_mgr.emit(event)
                 except Exception as e:
                     self.logger.error(i18n.t("webhook.emit_failed", name=account_name, error=e, default="账户 {name} 分发事件失败: {error}"))
@@ -480,7 +483,9 @@ class WebhookAdapter(BaseAdapter):
         )
 
     async def call_api(self, endpoint: str, _account_id: str = None, **params):
-        account_name, account = self._resolve_account(_account_id)
+                # 标准字段 account_id 与旧名 _account_id 双兼容（ApiDSL.Using 传标准名）
+        account_id = params.pop("account_id", None) or _account_id
+        account_name, account = self._resolve_account(account_id)
 
         if endpoint in ("send_message", "send_msg"):
             if not account:
